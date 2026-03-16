@@ -32,26 +32,12 @@
             border-radius: 6px;
             z-index: 20;
         }
-
-        #ui {
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 50;
-        }
-
-        .mobileUI {
-            transform: scale(2);
-            transform-origin: top left;
-        }
     </style>
 </head>
 
 <body>
-    <div id="ui">
-        <button id="reset">RESET</button>
-        <div id="spawnName"></div>
-    </div>
+    <button id="reset">RESET</button>
+    <div id="spawnName"></div>
     <script>
         const {
             Engine,
