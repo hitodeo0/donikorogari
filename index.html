@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>fall toy</title>
+    <title>ドニころがし</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
     <style>
         body {
@@ -32,12 +32,26 @@
             border-radius: 6px;
             z-index: 20;
         }
+
+        #ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 50;
+        }
+
+        .mobileUI {
+            transform: scale(2);
+            transform-origin: top left;
+        }
     </style>
 </head>
 
 <body>
-    <button id="reset">RESET</button>
-    <div id="spawnName"></div>
+    <div id="ui">
+        <button id="reset">RESET</button>
+        <div id="spawnName"></div>
+    </div>
     <script>
         const {
             Engine,
@@ -54,6 +68,11 @@
         const MAX_OBJECTS = 80
         const CHARACTER_RATE = 0.6
         const CATEGORY_MOUSE = 0x0002
+        const isMobile = window.innerWidth < 768
+        const DISPLAY_SCALE = isMobile ? 1.5 : 1
+        if (isMobile) {
+            document.getElementById("ui").classList.add("mobileUI")
+        }
         const characterTable = [
             { src: "img/01.png", name: "かちこみ ドラゴン・タイガー・ゲート/王小龍" },
             { src: "img/02.png", name: "ジョン・ウィック:コンセクエンス/ケイン" },
@@ -174,7 +193,7 @@
             showName(name)
 
             const size = await getImageSize(src)
-            const scale = 0.5
+            const scale = 0.5 * DISPLAY_SCALE
             const w = size.w * scale
             const h = size.h * scale
 
