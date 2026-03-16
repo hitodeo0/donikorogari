@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>fall toy</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #f0f0f0;
+            font-family: sans-serif;
+        }
+
+        #reset {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            font-size: 18px;
+            padding: 8px 14px;
+        }
+
+        #spawnName {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            font-size: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 6px 10px;
+            border-radius: 6px;
+            z-index: 20;
+        }
+    </style>
+</head>
+
+<body>
+    <button id="reset">RESET</button>
+    <div id="spawnName"></div>
+    <script>
+        const {
+            Engine,
+            Render,
+            Runner,
+            Bodies,
+            Composite,
+            Events,
+            Mouse,
+            MouseConstraint
+        } = Matter
+
+        // ===== 設定 =====
+        const MAX_OBJECTS = 80
+        const CHARACTER_RATE = 0.6
+        const CATEGORY_MOUSE = 0x0002
+        const characterTable = [
+            { src: "img/01.png", name: "かちこみ ドラゴン・タイガー・ゲート/王小龍" },
+            { src: "img/02.png", name: "ジョン・ウィック:コンセクエンス/ケイン" },
+            { src: "img/03.png", name: "イップ・マン/葉問" },
+            { src: "img/04.png", name: "導火線 FLASH POINT/馬軍" },
+            { src: "img/05.png", name: "プロセキューター/霍子豪" },
+            { src: "img/06.png", name: "三国志英傑伝 関羽/関羽" },
+            { src: "img/07.png", name: "追龍/伍世豪" },
+            { src: "img/08.png", name: "タイガー・コネクション/遊龍" },
+            { src: "img/09.png", name: "レイジング・ファイア/張崇邦" }
+        ]
+        const itemTable = [
+            { src: "img/01_01.png", name: "ドラゴン兄さんのストラップ" },
+            { src: "img/02_01.png", name: "ケインのロケット" },
+            { src: "img/03_01.png", name: "はたき" },
+            { src: "img/04_01.png", name: "爆弾チキン" },
+            { src: "img/05_01.png", name: "あかり" },
+            { src: "img/05_02.png", name: "天秤" },
+            { src: "img/06_01.png", name: "曹操の酒" },
+            { src: "img/07_01.png", name: "お金" },
+            { src: "img/07_02.png", name: "月餅" },
+            { src: "img/08_01.png", name: "手錠" },
+            { src: "img/09_01.png", name: "卓球ラケット" }
+        ]
+
+        // ===== Engine =====
+        const engine = Engine.create()
+        engine.enableSleeping = true
+        const world = engine.world
+
+        // ===== 画面サイズ =====
+        let W = window.innerWidth
+        let H = window.innerHeight
+
+        // ===== Renderer =====
+        const render = Render.create({
+            element: document.body,
+            engine: engine,
+            options: {
+                width: W,
+                height: H,
+                wireframes: false,
+                background: "#f0f0f0",
+                showSleeping: false
+            }
+        })
+
+        Render.run(render)
+        Runner.run(Runner.create(), engine)
+
+        // ===== 地面 =====
+        const ground = Bodies.rectangle(
+            W / 2,
+            H - 15,
+            W,
+            30,
+            {
+                isStatic: true,
+                friction: 1,
+                collisionFilter: { group: -1 }
+            }
+        )
+        Composite.add(world, ground)
+
+        // ===== 画像サイズキャッシュ =====
+        const imageSizeCache = {}
+        function getImageSize(src) {
+            return new Promise(resolve => {
+                if (imageSizeCache[src]) {
+                    resolve(imageSizeCache[src])
+                    return
+                }
+
+                const img = new Image()
+                img.onload = () => {
+                    const size = {
+                        w: img.width,
+                        h: img.height
+                    }
+                    imageSizeCache[src] = size
+                    resolve(size)
+                }
+                img.src = src
+            })
+        }
+
+        // ===== 名前表示 =====
+        const label = document.getElementById("spawnName")
+        function showName(name) {
+            label.textContent = name
+            label.style.opacity = 1
+            clearTimeout(label.timer)
+            label.timer = setTimeout(() => {
+                label.style.opacity = 0
+            }, 1500)
+        }
+
+        // ===== 生成 =====
+        let lastCharacterSrc = null
+        async function spawn(x, y) {
+            let obj
+
+            if (Math.random() < CHARACTER_RATE) {
+                do {
+                    obj = characterTable[
+                        Math.floor(Math.random() * characterTable.length)
+                    ]
+                } while (obj.src === lastCharacterSrc && characterTable.length > 1)
+                lastCharacterSrc = obj.src
+            } else {
+                obj = itemTable[
+                    Math.floor(Math.random() * itemTable.length)
+                ]
+            }
+
+            const src = obj.src
+            const name = obj.name
+            showName(name)
+
+            const size = await getImageSize(src)
+            const scale = 0.5
+            const w = size.w * scale
+            const h = size.h * scale
+
+            const body = Bodies.rectangle(
+                x,
+                y,
+                w,
+                h,
+
+                {
+                    restitution: 0.2,
+                    friction: 0.8,
+                    density: 0.001,
+                    collisionFilter: {
+                        category: 0x0001
+                    },
+                    render: {
+                        sprite: {
+                            texture: src,
+                            xScale: scale,
+                            yScale: scale
+                        }
+                    }
+                }
+            )
+            body.label = name
+
+            Composite.add(world, body)
+
+            // 最大数制限
+            const dynamicBodies = world.bodies.filter(b => !b.isStatic)
+            if (dynamicBodies.length > MAX_OBJECTS) {
+                Composite.remove(world, dynamicBodies[0])
+            }
+            setTimeout(() => {
+                body.collisionFilter.category = CATEGORY_MOUSE
+            }, 300)
+        }
+
+        // ===== クリック生成 =====
+        document.addEventListener("pointerdown", e => {
+            if (mouseConstraint.body) return
+            spawn(e.clientX, e.clientY)
+        })
+
+        // ===== 画面外削除 =====
+        Events.on(engine, "afterUpdate", () => {
+            for (let b of world.bodies) {
+                if (b.isStatic) continue
+                if (
+                    b.position.x < -300 ||
+                    b.position.x > W + 300 ||
+                    b.position.y > H + 300
+                ) {
+                    Composite.remove(world, b)
+                }
+            }
+        })
+
+        // ===== リセット =====
+        document.getElementById("reset").onclick = () => {
+            Composite.clear(world, false)
+            Composite.add(world, ground)
+        }
+
+        // ===== フリック操作 =====
+        const mouse = Mouse.create(render.canvas)
+        const mouseConstraint = MouseConstraint.create(engine, {
+            mouse: mouse,
+            collisionFilter: {
+                mask: CATEGORY_MOUSE
+            },
+            constraint: {
+                stiffness: 0.2,
+                render: { visible: false }
+            }
+        })
+        Composite.add(world, mouseConstraint)
+        render.mouse = mouse
+
+        // ===== フリックで名前表示 =====
+        Matter.Events.on(mouseConstraint, "startdrag", function (e) {
+            const body = e.body
+            if (body && body.label) {
+                showName(body.label)
+            }
+        })
+
+        // ===== リサイズ対応 =====
+        window.addEventListener("resize", () => {
+            W = window.innerWidth
+            H = window.innerHeight
+            render.canvas.width = W
+            render.canvas.height = H
+        })
+    </script>
+</body>
+
+</html>
